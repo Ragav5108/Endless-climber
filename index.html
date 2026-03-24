@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Endless Climber: Medium</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4facfe;
+            --secondary: #00f2fe;
+            --accent: #ff0055;
+            --dark: #1a1a2e;
+            --gold: #ffd700;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            overflow: hidden;
+            font-family: 'Nunito', sans-serif;
+            touch-action: none;
+            color: white;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            background: linear-gradient(to bottom, #87CEEB, #E0F7FA);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            border-radius: 8px;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        #hud {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            z-index: 5;
+        }
+
+        .stat-box {
+            background: rgba(0,0,0,0.5);
+            padding: 10px 15px;
+            border-radius: 15px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 20px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #score-display { color: #fff; text-shadow: 2px 2px 0 #000; }
+        #coin-display { color: var(--gold); text-shadow: 1px 1px 0 #000; }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(5px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            pointer-events: auto;
+            text-align: center;
+            overflow-y: auto;
+        }
+
+        h1 { 
+            font-family: 'Fredoka One', cursive; 
+            font-size: 45px; 
+            margin: 0 0 10px 0; 
+            background: -webkit-linear-gradient(var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+            filter: drop-shadow(0px 4px 0px rgba(0,0,0,0.3));
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-family: 'Fredoka One', cursive;
+            background: linear-gradient(45deg, var(--accent), #ff4757);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(255, 0, 85, 0.4);
+            transition: transform 0.1s;
+            text-transform: uppercase;
+            margin: 10px;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn-secondary { background: linear-gradient(45deg, #2ecc71, #27ae60); box-shadow: 0 10px 20px rgba(46, 204, 113, 0.4); }
+        .btn-shop { background: linear-gradient(45deg, #f1c40f, #f39c12); box-shadow: 0 10px 20px rgba(241, 196, 15, 0.4); }
+
+        #shop-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+            max-width: 400px;
+        }
+
+        .shop-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .shop-item:hover { background: rgba(255,255,255,0.2); }
+        .shop-item.equipped { border-color: #2ecc71; background: rgba(46, 204, 113, 0.2); }
+        .shop-item.locked { opacity: 0.7; }
+
+        .char-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+        }
+
+        .price-tag {
+            font-family: 'Fredoka One', cursive;
+            color: var(--gold);
+            font-size: 18px;
+        }
+
+        #mobile-controls {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            height: 100px;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 40px;
+            box-sizing: border-box;
+            pointer-events: auto;
+            z-index: 10;
+        }
+
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            color: white;
+            backdrop-filter: blur(4px);
+            user-select: none;
+        }
+        .control-btn:active { background: rgba(255, 255, 255, 0.5); }
+
+        @media (min-width: 1024px) { #mobile-controls { display: none; } }
+
+        .floater {
+            position: absolute;
+            font-family: 'Fredoka One', cursive;
+            font-size: 24px;
+            color: var(--gold);
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            text-shadow: 1px 1px 0 #000;
+            z-index: 100;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui-layer">
+        <div id="hud">
+            <div class="stat-box" id="score-display">Score: 0</div>
+            <div class="stat-box" id="coin-display">🪙 0</div>
+        </div>
+        
+        <div id="mobile-controls">
+            <div class="control-btn" id="btn-left">◀</div>
+            <div class="control-btn" id="btn-right">▶</div>
+        </div>
+    </div>
+
+    <div id="start-screen" class="screen">
+        <h1>Endless<br>Climber</h1>
+        <p>High Score: <span id="menu-highscore" style="color:var(--gold)">0</span></p>
+        <button class="btn" onclick="startGame()">Play</button>
+        <button class="btn btn-shop" onclick="openShop()">Shop</button>
+    </div>
+
+    <div id="game-over-screen" class="screen" style="display: none;">
+        <h1 style="background: -webkit-linear-gradient(#ff4757, #ff6b81); -webkit-background-clip: text;">Game Over</h1>
+        <p>Score: <span id="final-score" style="color:white; font-weight:bold;">0</span></p>
+        <p>Coins Collected: <span id="session-coins" style="color:var(--gold); font-weight:bold;">0</span></p>
+        <button class="btn" onclick="resetGame()">Play Again</button>
+        <button class="btn btn-secondary" onclick="showMenu()">Main Menu</button>
+    </div>
+
+    <div id="shop-screen" class="screen" style="display: none;">
+        <h1>Character Shop</h1>
+        <p>Coins: <span id="shop-coins" style="color:var(--gold)">0</span></p>
+        <div id="shop-grid"></div>
+        <button class="btn btn-secondary" onclick="showMenu()">Back</button>
+    </div>
+</div>
+
+<script>
+    const defaultData = {
+        highScore: 0,
+        totalCoins: 0,
+        unlockedChars: ['blue'],
+        equippedChar: 'blue'
+    };
+
+    let gameData = JSON.parse(localStorage.getItem('endlessClimberData')) || defaultData;
+
+    function saveData() {
+        localStorage.setItem('endlessClimberData', JSON.stringify(gameData));
+        updateUI();
+    }
+
+    const characters = [
+        { id: 'blue', name: 'Classic', color: '#3498db', price: 0 },
+        { id: 'red', name: 'Speedy', color: '#e74c3c', price: 50 },
+        { id: 'green', name: 'Toxic', color: '#2ecc71', price: 100 },
+        { id: 'purple', name: 'Ninja', color: '#9b59b6', price: 200 },
+        { id: 'gold', name: 'Legend', color: '#f1c40f', price: 350 },
+        { id: 'black', name: 'Shadow', color: '#2c3e50', price: 500 }
+    ];
+
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
+
+    function playSound(type) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'jump') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+            gainNode.gain.setValueAtTime(0.3, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now); osc.stop(now + 0.1);
+        } else if (type === 'coin') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(1200, now);
+            osc.frequency.setValueAtTime(1800, now + 0.1);
+            gainNode.gain.setValueAtTime(0.1, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            osc.start(now); osc.stop(now + 0.2);
+        } else if (type === 'powerup') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(400, now);
+            osc.frequency.linearRampToValueAtTime(1200, now + 0.3);
+            gainNode.gain.setValueAtTime(0.3, now);
+            gainNode.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
+        } else if (type === 'buy') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, now);
+            osc.frequency.setValueAtTime(800, now + 0.1);
+            gainNode.gain.setValueAtTime(0.3, now);
+            gainNode.gain.linearRampToValueAtTime(0.01, now + 0.2);
+            osc.start(now); osc.stop(now + 0.2);
+        } else if (type === 'crash') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, now);
+            osc.frequency.exponentialRampToValueAtTime(10, now + 0.3);
+            gainNode.gain.setValueAtTime(0.3, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
+        }
+    }
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let isPlaying = false;
+    let score = 0;
+    let sessionCoins = 0;
+    let platforms = [];
+    let enemies = [];
+    let powerups = [];
+    let coins = [];
+    let keys = { left: false, right: false };
+
+    let width, height;
+    
+    function resize() {
+        width = Math.min(window.innerWidth, 500); 
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const player = {
+        x: 0, y: 0,
+        w: 30, h: 30,
+        vx: 0, vy: 0,
+        speed: 5,
+        jumpStrength: -12,
+        color: '#3498db',
+        grounded: false
+    };
+
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+    });
+    window.addEventListener('keyup', (e) => {
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+    });
+
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const handleTouch = (btn, key, state) => {
+        btn.addEventListener(state ? 'touchstart' : 'touchend', (e) => { e.preventDefault(); keys[key] = state; });
+    };
+    handleTouch(btnLeft, 'left', true); handleTouch(btnLeft, 'left', false);
+    handleTouch(btnRight, 'right', true); handleTouch(btnRight, 'right', false);
+
+    function startGame() {
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('game-over-screen').style.display = 'none';
+        document.getElementById('shop-screen').style.display = 'none';
+        
+        const charData = characters.find(c => c.id === gameData.equippedChar);
+        player.color = charData ? charData.color : '#3498db';
+
+        resetVariables();
+        isPlaying = true;
+        loop();
+    }
+
+    function resetGame() { startGame(); }
+
+    function showMenu() {
+        document.getElementById('game-over-screen').style.display = 'none';
+        document.getElementById('shop-screen').style.display = 'none';
+        document.getElementById('start-screen').style.display = 'flex';
+        updateUI();
+    }
+
+    function resetVariables() {
+        score = 0;
+        sessionCoins = 0;
+        platforms = [];
+        enemies = [];
+        powerups = [];
+        coins = [];
+        
+        platforms.push({ x: 0, y: height - 50, w: width, h: 50, type: 'ground' });
+        for(let i=0; i<6; i++) generatePlatform(height - 150 - (i * 110));
+
+        player.x = width / 2 - player.w / 2;
+        player.y = height - 150;
+        player.vx = 0;
+        player.vy = 0;
+        
+        updateHUD();
+    }
+
+    function generatePlatform(yPos) {
+        // MEDIUM DIFFICULTY: Moderate width (70-130px)
+        const pWidth = Math.random() * 60 + 70;
+        
+        // MEDIUM DIFFICULTY: Random placement across most of the screen
+        const pX = Math.random() * (width - pWidth);
+        
+        platforms.push({ x: pX, y: yPos, w: pWidth, h: 15, type: 'ladder' });
+
+        // MEDIUM DIFFICULTY: 15% chance for enemy (balanced)
+        if (score > 200 && Math.random() < 0.15) {
+            enemies.push({
+                x: pX, y: yPos - 20, w: 25, h: 20,
+                speed: Math.random() * 1.5 + 1, // Moderate speed
+                dir: 1,
+                rangeStart: pX, rangeEnd: pX + pWidth
+            });
+        }
+
+        // 50% chance for coin
+        if (Math.random() < 0.5) {
+            coins.push({
+                x: pX + pWidth/2 - 10, y: yPos - 40, w: 20, h: 20, collected: false
+            });
+        }
+
+        if (score > 500 && Math.random() < 0.08) {
+            const type = Math.random() > 0.5 ? 'rocket' : 'teleport';
+            powerups.push({
+                x: pX + pWidth/2 - 15, y: yPos - 40, w: 30, h: 30, type: type
+            });
+        }
+    }
+
+    function createFloatingText(text, x, y, color) {
+        const el = document.createElement('div');
+        el.className = 'floater';
+        el.innerText = text;
+        el.style.color = color || '#ffd700';
+        el.style.left = (canvas.offsetLeft + x) + 'px';
+        el.style.top = (canvas.offsetTop + y) + 'px';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1000);
+    }
+
+    function update() {
+        if (!isPlaying) return;
+
+        if (keys.left) player.vx = -player.speed;
+        else if (keys.right) player.vx = player.speed;
+        else player.vx = 0;
+        player.x += player.vx;
+
+        if (player.x + player.w < 0) player.x = width;
+        if (player.x > width) player.x = -player.w;
+
+        player.vy += 0.5; 
+        player.y += player.vy;
+
+        player.grounded = false;
+        if (player.vy > 0) {
+            for (let p of platforms) {
+                if (player.x + player.w > p.x && player.x < p.x + p.w &&
+                    player.y + player.h >= p.y && player.y + player.h <= p.y + p.h + 15) {
+                    player.grounded = true;
+                    player.vy = 0;
+                    player.y = p.y - player.h;
+                    player.vy = player.jumpStrength;
+                    playSound('jump');
+                    break;
+                }
+            }
+        }
+
+        for (let i = coins.length - 1; i >= 0; i--) {
+            let c = coins[i];
+            if (!c.collected && 
+                player.x < c.x + c.w && player.x + player.w > c.x &&
+                player.y < c.y + c.h && player.y + player.h > c.y) {
+                
+                c.collected = true;
+                sessionCoins++;
+                playSound('coin');
+                createFloatingText("+1", player.x, player.y, '#ffd700');
+                coins.splice(i, 1);
+                updateHUD();
+            }
+        }
+
+        for (let i = powerups.length - 1; i >= 0; i--) {
+            let pu = powerups[i];
+            if (player.x < pu.x + pu.w && player.x + player.w > pu.x &&
+                player.y < pu.y + pu.h && player.y + player.h > pu.y) {
+                
+                playSound('powerup');
+                createFloatingText(pu.type === 'rocket' ? "ROCKET!" : "TELEPORT!", player.x, player.y, '#fff');
+                
+                if (pu.type === 'rocket') player.vy = -25;
+                else if (pu.type === 'teleport') { player.y = height / 2 - 100; player.vy = -5; }
+                
+                powerups.splice(i, 1);
+            }
+        }
+
+        if (player.y < height / 2) {
+            let diff = (height / 2) - player.y;
+            player.y = height / 2;
+            
+            platforms.forEach(p => p.y += diff);
+            enemies.forEach(e => e.y += diff);
+            powerups.forEach(p => p.y += diff);
+            coins.forEach(c => c.y += diff);
+
+            score += Math.floor(diff);
+            updateHUD();
+
+            if (platforms[platforms.length - 1].y > 100) generatePlatform(-20);
+            if (platforms[0].y > height) platforms.shift();
+            if (enemies.length > 0 && enemies[0].y > height) enemies.shift();
+            if (powerups.length > 0 && powerups[0].y > height) powerups.shift();
+            if (coins.length > 0 && coins[0].y > height) coins.shift();
+        }
+
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            let e = enemies[i];
+            e.x += e.speed * e.dir;
+            if (e.x > e.rangeEnd - e.w || e.x < e.rangeStart) e.dir *= -1;
+
+            if (player.x < e.x + e.w && player.x + player.w > e.x &&
+                player.y < e.y + e.h && player.y + player.h > e.y) {
+                gameOver();
+            }
+        }
+
+        if (player.y > height) gameOver();
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, width, height);
+
+        platforms.forEach(p => {
+            ctx.fillStyle = '#2ecc71';
+            ctx.fillRect(p.x, p.y, p.w, p.h);
+            ctx.fillStyle = '#27ae60';
+            for(let i=0; i<p.w; i+=15) ctx.fillRect(p.x + i, p.y, 4, p.h);
+        });
+
+        coins.forEach(c => {
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(c.x + c.w/2, c.y + c.h/2, c.w/2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle = '#f39c12';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(c.x + c.w/2 - 3, c.y + c.h/2 - 3, 3, 0, Math.PI*2);
+            ctx.fill();
+        });
+
+        powerups.forEach(p => {
+            ctx.fillStyle = p.type === 'rocket' ? '#e74c3c' : '#9b59b6';
+            ctx.beginPath();
+            ctx.arc(p.x + p.w/2, p.y + p.h/2, p.w/2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(p.type === 'rocket' ? '🚀' : '🌀', p.x + p.w/2, p.y + p.h/2);
+        });
+
+        enemies.forEach(e => {
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(e.x, e.y, e.w, e.h);
+            ctx.fillStyle = 'white';
+            ctx.fillRect(e.x + 5, e.y + 5, 6, 6);
+            ctx.fillRect(e.x + 14, e.y + 5, 6, 6);
+        });
+
+        ctx.fillStyle = player.color;
+        ctx.fillRect(player.x, player.y, player.w, player.h);
+        ctx.fillStyle = 'white';
+        if(keys.left) {
+            ctx.fillRect(player.x + 4, player.y + 6, 8, 8);
+        } else {
+            ctx.fillRect(player.x + 18, player.y + 6, 8, 8);
+        }
+    }
+
+    function loop() {
+        if (isPlaying) {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+    }
+
+    function gameOver() {
+        isPlaying = false;
+        playSound('crash');
+        
+        if (score > gameData.highScore) gameData.highScore = score;
+        gameData.totalCoins += sessionCoins;
+        saveData();
+
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('session-coins').innerText = sessionCoins;
+        document.getElementById('game-over-screen').style.display = 'flex';
+    }
+
+    function updateHUD() {
+        document.getElementById('score-display').innerText = "Score: " + score;
+        document.getElementById('coin-display').innerText = "🪙 " + sessionCoins;
+    }
+
+    function updateUI() {
+        document.getElementById('menu-highscore').innerText = gameData.highScore;
+        document.getElementById('shop-coins').innerText = gameData.totalCoins;
+    }
+
+    function openShop() {
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('shop-screen').style.display = 'flex';
+        renderShop();
+        updateUI();
+    }
+
+    function renderShop() {
+        const grid = document.getElementById('shop-grid');
+        grid.innerHTML = '';
+
+        characters.forEach(char => {
+            const isUnlocked = gameData.unlockedChars.includes(char.id);
+            const isEquipped = gameData.equippedChar === char.id;
+            
+            const item = document.createElement('div');
+            item.className = `shop-item ${isEquipped ? 'equipped' : ''} ${!isUnlocked ? 'locked' : ''}`;
+            
+            let btnText = isEquipped ? 'EQUIPPED' : (isUnlocked ? 'EQUIP' : `BUY ${char.price}`);
+            
+            item.innerHTML = `
+                <div class="char-preview" style="background-color: ${char.color}"></div>
+                <div style="font-weight:bold; margin-bottom:5px;">${char.name}</div>
+                <div class="price-tag">${btnText}</div>
+            `;
+
+            item.onclick = () => handleShopClick(char);
+            grid.appendChild(item);
+        });
+    }
+
+    function handleShopClick(char) {
+        const isUnlocked = gameData.unlockedChars.includes(char.id);
+        
+        if (isUnlocked) {
+            gameData.equippedChar = char.id;
+            playSound('jump');
+            saveData();
+            renderShop();
+        } else {
+            if (gameData.totalCoins >= char.price) {
+                gameData.totalCoins -= char.price;
+                gameData.unlockedChars.push(char.id);
+                gameData.equippedChar = char.id;
+                playSound('buy');
+                saveData();
+                renderShop();
+            } else {
+                alert("Not enough coins!");
+            }
+        }
+    }
+
+    updateUI();
+
+</script>
+</body>
+</html>
